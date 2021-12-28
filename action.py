@@ -27,11 +27,18 @@ class Action:
         self.impact = impact
         self.name = name
         self.steps = steps
+        self.cognitive_demanding = False
+        self.motor_demanding = False
 
         if self.name == self.EAT:
             self.choose_food_update_impact()
-        if self.name == self.DRINK:
+        elif self.name == self.DRINK:
             self.choose_drink_update_impact()
+        else:
+            if impact.motor_short < 0: self.motor_demanding = True
+            if impact.cognitive_short < 0: self.cognitive_demanding = True
+
+
 
     def print(self):
         print("Name: ", self.name)
@@ -75,9 +82,9 @@ class Actions:
         self.actions[Action.RUN] = Action(Action.RUN, 5, impact=Properties(-1, 0.3, 1, 0.3, 0.05, 0.05))
         self.actions[Action.WALK] = Action(Action.WALK, 5, impact=Properties(-0.3, 0.1, 0.3, 0.1, 0.02, 0.02))
         self.actions[Action.SIT_WORK] = Action(Action.SIT_WORK, 5, impact=Properties(0, -0.1, -0.3, 0.1, -0.01, -0.01))
-        self.actions[Action.READ] = Action(Action.READ, 5, impact=Properties(0, -0.1, -0.3, 0.1, -0.01, -0.01))
-        self.actions[Action.WATCH_TV] = Action(Action.WATCH_TV, 30, impact=Properties(-0.1, -0.1, -0.2, -0.1, -0.05, -0.05))
-        self.actions[Action.SLEEP] = Action(Action.SLEEP, 60, impact=Properties(0.1, 0.3, 1, 0.3, 0.01, 0.01))
+        self.actions[Action.READ] = Action(Action.READ, 30, impact=Properties(-0.5, -0.1, -2.5, 0.5, -0.01, -0.01))
+        self.actions[Action.WATCH_TV] = Action(Action.WATCH_TV, 30, impact=Properties(0.5, -0.1, 0.5, -0.1, -0.05, -0.05))
+        self.actions[Action.SLEEP] = Action(Action.SLEEP, 60, impact=Properties(-0.05, 0.1, 0.2, 0.1, 0.05, 0.05))
 
         # Physiology regulation
         self.actions[Action.EAT] = Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0))
