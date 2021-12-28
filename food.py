@@ -36,9 +36,9 @@ class Food:
 
     def get_weights(self):
 
-        temp_motor_short = (self.nutrition.carbs / 100) + (self.nutrition.sugar / 100)
+        temp_motor_short = (self.nutrition.carbs / 2.5) + (self.nutrition.sugar / 2.5)
         temp_motor_long = self.nutrition.protein / 100
-        temp_cognitive_short = (self.nutrition.carbs / 100) + (self.nutrition.sugar / 100)
+        temp_cognitive_short = (self.nutrition.carbs / 2.5) + (self.nutrition.sugar / 2.5)
         temp_cognitive_long = (self.nutrition.poli_fat / 100) + (self.nutrition.vitamins / 100)
 
         temp_cardio = (self.nutrition.vitamins / 100) + (self.nutrition.poli_fat / 100)
@@ -74,20 +74,22 @@ class Foods:
     # TODO - load all foods from a csv file
     def __init__(self):
 
+        # Foods
         self.foods.append(Food("Potato", "tuber", nutrition=Nutrition(0.1, 0, 17, 0.2, 2, 0, 2.2), water_percentage=0.2))
-        self.foods.append(Food("Rice", "tuber", nutrition=Nutrition(0.1, 0, 17, 0.2, 2, 0, 2.2), water_percentage=0.2))
+        # self.foods.append(Food("Rice", "tuber", nutrition=Nutrition(0.1, 0, 57, 0.2, 2, 0, 2.2), water_percentage=0.2))
         self.foods.append(Food("Pasta", "tuber", nutrition=Nutrition(0.9, 0.2, 25, 0, 5, 0.2, 0), water_percentage=0.2))
 
-        self.foods.append(Food("Cake", "pastery", nutrition=Nutrition(18, 6, 48, 15, 2, 0, 2), water_percentage=0.1))
+        # self.foods.append(Food("Cake", "pastery", nutrition=Nutrition(18, 6, 48, 15, 2, 0, 2), water_percentage=0.1))
 
         self.foods.append(Food("Beef", "meat", nutrition=Nutrition(9, 6, 0, 0, 26, 0, 0), water_percentage=0.3))
-        self.foods.append(Food("Chicken", "meat", nutrition=Nutrition(10.2, 3.8, 0, 0, 27, 0.4, 0), water_percentage=0.3))
-        self.foods.append(Food("Turkey", "meat", nutrition=Nutrition(4.8, 2.2, 0.1, 0, 29, 0.4, 0), water_percentage=0.3))
-        self.foods.append(Food("Pork", "meat", nutrition=Nutrition(9, 5, 0, 0, 27, 0.5, 0), water_percentage=0.3))
+        # self.foods.append(Food("Chicken", "meat", nutrition=Nutrition(10.2, 3.8, 0, 0, 27, 0.4, 0), water_percentage=0.3))
+        # self.foods.append(Food("Turkey", "meat", nutrition=Nutrition(4.8, 2.2, 0.1, 0, 29, 0.4, 0), water_percentage=0.3))
+        # self.foods.append(Food("Pork", "meat", nutrition=Nutrition(9, 5, 0, 0, 27, 0.5, 0), water_percentage=0.3))
 
         self.foods.append(Food("Lettuce", "vegetables", nutrition=Nutrition(0.2, 0, 0.8, 0.8, 1.4, 0.1, 1.3), water_percentage=0.5))
         self.foods.append(Food("Tomato", "vegetables", nutrition=Nutrition(0.2, 0, 3.9, 2.6, 0.9, 0.1, 1.2), water_percentage=0.95))
 
+        # Drinks
         self.drinks.append(Food("Water", "drink", nutrition=Nutrition(0, 0, 0, 0, 0, 0.1, 0.1), water_percentage=1))
 
     def get_foods(self):

@@ -1,3 +1,5 @@
+import numpy as np
+
 from properties import Properties
 from action import Action, Actions
 import copy
@@ -9,45 +11,50 @@ class Human:
 
     # CSV
     header = ["time", "weight", "height", "bmi", "liquid_absorbed", "liquid_waste", "solid_absorbed",
-              "solid_waste", "current_action.name", "current_action.steps", "performance.motor_short",
+              "solid_waste", "plan", "current_action.name", "current_action.steps", "performance.motor_short",
               "performance.motor_long", "performance.cognitive_short", "performance.cognitive_long",
               "performance.cardio", "performance.regulatory", "energy.motor_short",
               "energy.motor_long", "energy.cognitive_short", "energy.cognitive_long",
-              "energy.cardio", "energy.regulatory"]
+              "energy.cardio", "energy.regulatory", "fatigue_level"]
 
     # Healthy issues
-    FATIGUE = False
-    STRESS = False
+    COGNITIVE_FATIGUE = False
+    MOTOR_FATIGUE = False
     CONGESTED = False
     URINE = False
 
     HUNGRY = False
     THIRSTY = False
 
-    # Physiology
-    ABSORPTION_RATE_ENERGY = 0.03
-    ABSORPTION_RATE_WATER = 1.5
-    ABSORPTION_RATE_SOLID = 0.5
+    # Physiology - Configurable
+    ABSORPTION_RATE_ENERGY = 0.4    # from energy to performance
+    ABSORPTION_RATE_WATER = 1.5     # from energy to pee
+    ABSORPTION_RATE_SOLID = 0.5     # from energy to poo
+    BODY_REGULATION_RATE = 0.1      # normal body resources consumption
 
-    LIQUID_RELEASE = 40
-    SOLID_RELEASE = 40
+    LIQUID_RELEASE = 40             # thresholding for peeing
+    SOLID_RELEASE = 40              # thresholding for pooing
     max_eat = 500
 
     # levels
-    liquid_waste = 0
-    liquid_absorbed = 0
-    solid_waste = 0
-    solid_absorbed = 0
+    liquid_waste = 0                # bladder
+    liquid_absorbed = 0             # energy
+    solid_waste = 0                 # intestine
+    solid_absorbed = 0              # energy
 
-    THIRSTY_LEVEL = 10
-    HUNGRY_LEVEL = 20
+    THIRSTY_LEVEL = 10              # threshold to drink
+    HUNGRY_LEVEL = 20               # threshold to eat
 
+    fatigue = 1
+    FATIGUE_RATE = 0.0009           # normal body fatigue during the day
+    COGNITIVE_FATIGUE_LEVEL = 10    # threshold for tiredness - might result in resting actions
+    MOTOR_FATIGUE_LEVEL = 10        # threshold for tiredness - might result in resting actions
 
     # Planning
     plan = []
 
     # TODO - DNA for later influence in major human characteristics
-    def __init__(self, name="Neo", age=20, weight=70, height=1.7, performance=Properties(50, 50, 50, 50, 50, 50), energy=Properties(0, 0, 0, 0, 0, 0)):
+    def __init__(self, name="Neo", age=20, weight=70, height=1.7, performance=Properties(25, 50, 25, 50, 50, 50), energy=Properties(0, 0, 0, 0, 0, 0)):
         self.name = name
         self.age = age
         self.height = height
@@ -80,13 +87,19 @@ class Human:
                 self.solid_waste = 0
 
             self.update_performance(self.current_action)
-            self.consume_energy()
-            self.regulation()
+        self.consume_energy()
+        self.regulation()
 
         self.current_action.steps = self.current_action.steps - 1
 
     # regulation of the plan
     def regulation(self):
+
+        # Normal body resources consumption
+        self.performance.motor_short = self.performance.motor_short - self.BODY_REGULATION_RATE / self.fatigue
+        self.performance.cognitive_short = self.performance.cognitive_short - self.BODY_REGULATION_RATE / self.fatigue
+
+        # Levels
         if self.liquid_waste > self.LIQUID_RELEASE and not self.action_in_plan(Action.WC_PEE):
             self.plan.insert(0, Actions.actions[Action.WC_PEE])
             self.URINE = True
@@ -98,10 +111,33 @@ class Human:
         else:
             self.CONGESTED = False
 
-        if self.THIRSTY and not self.action_in_plan(Action.DRINK):
+        if self.performance.cognitive_short < 10:
+            self.COGNITIVE_FATIGUE = True
+        elif self.performance.cognitive_short > 30:
+            self.COGNITIVE_FATIGUE = False
+
+        if self.liquid_absorbed > self.THIRSTY_LEVEL:
+            self.THIRSTY = False
+        else:
+            self.THIRSTY = True
+        # if self.solid_absorbed > self.HUNGRY_LEVEL:
+        if (self.performance.motor_short + self.performance.cognitive_short < 50):
+            self.HUNGRY = True
+        else:
+            self.HUNGRY = False
+
+        # Actions
+        if self.COGNITIVE_FATIGUE:
+            if not (False in [self.plan[i].cognitive_demanding for i in np.arange(len(self.plan))]):
+                self.plan.insert(0, Actions.actions[Action.WATCH_TV])
+
+        # Physiological needs are the priority so they go in the end in the code
+        if self.THIRSTY and not self.action_in_plan(Action.DRINK) and not self.current_action.name == Action.DRINK:
             self.plan.insert(0, Actions.actions[Action.DRINK])
-        if self.HUNGRY and not self.action_in_plan(Action.EAT):
+        if self.HUNGRY and not self.action_in_plan(Action.EAT) and not self.current_action.name == Action.EAT:
             self.plan.insert(0, Actions.actions[Action.EAT])
+
+
 
     # From eating to body
     def consume_energy(self):
@@ -114,21 +150,13 @@ class Human:
         else:
             self.solid_waste = self.solid_waste + self.ABSORPTION_RATE_SOLID
             self.solid_absorbed = self.solid_absorbed - self.ABSORPTION_RATE_SOLID
+
         if self.energy.motor_short < 0: self.energy.motor_short = 0
         if self.energy.motor_long < 0: self.energy.motor_long = 0
         if self.energy.cognitive_short < 0: self.energy.cognitive_short = 0
         if self.energy.cognitive_long < 0: self.energy.cognitive_long = 0
         if self.energy.cardio < 0: self.energy.cardio = 0
         if self.energy.regulatory < 0: self.energy.regulatory = 0
-
-        if self.liquid_absorbed > self.THIRSTY_LEVEL:
-            self.THIRSTY = False
-        else:
-            self.THIRSTY = True
-        if self.solid_absorbed > self.HUNGRY_LEVEL:
-            self.HUNGRY = False
-        else:
-            self.HUNGRY = True
 
         if self.energy.motor_short > 0:
             self.energy.motor_short = self.energy.motor_short - self.ABSORPTION_RATE_ENERGY
@@ -212,11 +240,7 @@ class Human:
         self.performance.cardio = self.performance.cardio + (act.impact.cardio/act.steps)
         self.performance.regulatory = self.performance.regulatory + (act.impact.regulatory/act.steps)
 
-        if self.performance.motor_short < 0:
-            self.performance.motor_short = 0
-            self.FATIGUE = True
-        elif self.performance.motor_short < 100:
-            self.FATIGUE = False
+        self.fatigue = self.fatigue - self.FATIGUE_RATE
 
     def action_in_plan(self, act_name):
         for p in self.plan:
@@ -272,12 +296,14 @@ class Human:
         if os.stat(file).st_size == 0:
             writer.writerow(self.header)
 
+        temp_plan = [p.name for p in self.plan]
+
         row_tuple = [time_str, round(self.weight, 2), round(self.height,2), round(self.bmi,2), round(self.liquid_absorbed,2), round(self.liquid_waste,2), round(self.solid_absorbed,2),
-                 round(self.solid_waste,2), self.current_action.name, self.current_action.steps, round(self.performance.motor_short,2),
+                 round(self.solid_waste,2), temp_plan, self.current_action.name, self.current_action.steps, round(self.performance.motor_short,2),
                  round(self.performance.motor_long,2), round(self.performance.cognitive_short,2), round(self.performance.cognitive_long,2),
                  round(self.performance.cardio,2), round(self.performance.regulatory,2), round(self.energy.motor_short,2),
                  round(self.energy.motor_long,2), round(self.energy.cognitive_short,2), round(self.energy.cognitive_long,2),
-                 round(self.energy.cardio,2), round(self.energy.regulatory,2)]
+                 round(self.energy.cardio,2), round(self.energy.regulatory,2), self.fatigue]
 
         writer.writerow(row_tuple)
         f.close()
@@ -290,6 +316,7 @@ class Human:
         print("Height:", self.height)
         print("BMI:", self.print_bmi())
         print("Status: ", self.get_status())
+        print("Fatigue: " , self.fatigue_level)
 
         # Physiology
         print("Liquid Absorbed: ", self.liquid_absorbed , "| Liquid Waste: ", self.liquid_waste)
