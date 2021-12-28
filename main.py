@@ -2,41 +2,7 @@ import numpy as np
 from human import *
 from action import *
 import os, shutil
-
-
-class Time:
-
-    def __init__(self):
-
-        self.day = 1
-        self.month = 1
-        self.year = 2020
-        self.time = 480
-
-        self.max_time = 1440
-        self.max_day = 30
-        self.max_month = 12
-
-    def print(self):
-        hour_temp = self.time//60
-        minute_temp = self.time - (hour_temp*60)
-        print("{0}:{1} {2}/{3}/{4}".format(hour_temp, minute_temp, self.day, self.month, self.year))
-
-    def str(self):
-        hour_temp = self.time // 60
-        minute_temp = self.time - (hour_temp * 60)
-        return "{}/{}/{} {}:{}:00".format(self.day, self.month, self.year, hour_temp, minute_temp)
-
-    def do_step(self, i):
-        self.time = self.time + 1
-        if self.time > self.max_time:
-            self.day = self.day + 1
-            self.time = 1
-            if self.day > self.max_day:
-                self.month = self.month + 1
-                self.day = 1
-                if self.month > self.max_month:
-                    self.year = self.year + 1
+from simulation_time import Time
 
 def remove_all_files(folder):
 
@@ -51,24 +17,25 @@ def remove_all_files(folder):
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
 
-foods = Foods().get_foods()         # List
-humans = Humans().get_humans()      # List
-actions = Actions().get_actions()   # Dict
 time_simulation = Time()
+foods = Foods().get_foods()         # List
+humans = Humans(time_simulation).get_humans()      # List
+actions = Actions().get_actions()   # Dict
 
 # actions[Action.RUN].print()
 # humans[0].print()
 # foods[2].print()
 
-SIMULATION_MAX = 1000
+SIMULATION_MAX = 12000
 STEP = 1
 
-humans[0].add_action(Actions.actions[Action.EAT])
+humans[0].add_action(Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
+# humans[0].add_action(Action_Physiologic(Action_Physiologic.EAT))
 # humans[0].add_action(Actions.actions[Action.SLEEP])
 # humans[0].add_action(Actions.actions[Action.WC])
 for i in np.arange(3):
     humans[0].add_action(Actions.actions[Action.WATCH_TV])
-for i in np.arange(15):
+for i in np.arange(100):
     humans[0].add_action(Actions.actions[Action.READ])
 
 #######################################################################################
@@ -89,5 +56,5 @@ for tick in np.arange(SIMULATION_MAX):
     humans[0].write_csv(folder, time_simulation.str())
 
     if _print: print('=~'*20)
-    #input()
+    if _print: input()
 

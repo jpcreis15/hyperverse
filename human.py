@@ -2,6 +2,7 @@ import numpy as np
 
 from properties import Properties
 from action import Action, Actions
+from simulation_time import Time
 import copy
 import csv
 import os
@@ -22,18 +23,19 @@ class Human:
     MOTOR_FATIGUE = False
     CONGESTED = False
     URINE = False
+    SLEEP = False
 
     HUNGRY = False
     THIRSTY = False
 
     # Physiology - Configurable
-    ABSORPTION_RATE_ENERGY = 0.4    # from energy to performance
+    ABSORPTION_RATE_ENERGY = 0.2    # from energy to performance
     ABSORPTION_RATE_WATER = 1.5     # from energy to pee
     ABSORPTION_RATE_SOLID = 0.5     # from energy to poo
     BODY_REGULATION_RATE = 0.1      # normal body resources consumption
 
-    LIQUID_RELEASE = 40             # thresholding for peeing
-    SOLID_RELEASE = 40              # thresholding for pooing
+    LIQUID_RELEASE = 80             # thresholding for peeing
+    SOLID_RELEASE = 80              # thresholding for pooing
     max_eat = 500
 
     # levels
@@ -46,15 +48,21 @@ class Human:
     HUNGRY_LEVEL = 20               # threshold to eat
 
     fatigue = 1
-    FATIGUE_RATE = 0.0009           # normal body fatigue during the day
+    FATIGUE_RATE = 0.0011           # normal body fatigue during the day
     COGNITIVE_FATIGUE_LEVEL = 10    # threshold for tiredness - might result in resting actions
+    COGNITIVE_NORMAL_LEVEL = 30     # threshold for tiredness - might result in resting actions
     MOTOR_FATIGUE_LEVEL = 10        # threshold for tiredness - might result in resting actions
+    MOTOR_NORMAL_LEVEL = 30         # threshold for tiredness - might result in resting actions
 
+    first_meal = False
+    schedule_lunch = [12, 14]
+    schedule_dinner = [19, 21]
+    BED_TIME = 22
     # Planning
     plan = []
 
     # TODO - DNA for later influence in major human characteristics
-    def __init__(self, name="Neo", age=20, weight=70, height=1.7, performance=Properties(25, 50, 25, 50, 50, 50), energy=Properties(0, 0, 0, 0, 0, 0)):
+    def __init__(self, simul_time, name="Neo", age=20, weight=70, height=1.7, performance=Properties(50, 50, 50, 50, 50, 50), energy=Properties(0, 0, 0, 0, 0, 0)):
         self.name = name
         self.age = age
         self.height = height
@@ -62,6 +70,7 @@ class Human:
         self.bmi = self.weight / self.height**2
         self.performance = performance
         self.energy = energy
+        self.simul_time = simul_time
 
         self.idle_action = Action(Action.IDLE, 1)
         self.current_action = self.idle_action
@@ -75,7 +84,6 @@ class Human:
                 self.current_action = self.idle_action
             return
 
-
         # human regulation
         if self.current_action.name == Action.EAT or self.current_action.name == Action.DRINK:
             self.update_energy(self.current_action)
@@ -87,6 +95,7 @@ class Human:
                 self.solid_waste = 0
 
             self.update_performance(self.current_action)
+
         self.consume_energy()
         self.regulation()
 
@@ -96,32 +105,63 @@ class Human:
     def regulation(self):
 
         # Normal body resources consumption
-        self.performance.motor_short = self.performance.motor_short - self.BODY_REGULATION_RATE / self.fatigue
-        self.performance.cognitive_short = self.performance.cognitive_short - self.BODY_REGULATION_RATE / self.fatigue
+        if self.current_action.name == Action.SLEEP:
+            self.fatigue = 1
+            self.first_meal = True
+        else:
+            factor = self.BODY_REGULATION_RATE / self.fatigue
+            self.performance.motor_short = self.performance.motor_short - factor
+            self.performance.cognitive_short = self.performance.cognitive_short - factor
+
+        if self.performance.motor_short < 0: self.performance.motor_short = 0
+        if self.performance.motor_long < 0: self.performance.motor_long = 0
+        if self.performance.cognitive_short < 0: self.performance.cognitive_short = 0
+        if self.performance.cognitive_long < 0: self.performance.cognitive_long = 0
+        if self.performance.cardio < 0: self.performance.cardio = 0
+        if self.performance.regulatory < 0: self.performance.regulatory = 0
+        if self.performance.motor_short > 100: self.performance.motor_short = 100
+        if self.performance.motor_long > 100: self.performance.motor_long = 100
+        if self.performance.cognitive_short > 100: self.performance.cognitive_short = 100
+        if self.performance.cognitive_long > 100: self.performance.cognitive_long = 100
+        if self.performance.cardio > 100: self.performance.cardio = 100
+        if self.performance.regulatory > 100: self.performance.regulatory = 100
 
         # Levels
+        if self.fatigue < 0.3 and self.simul_time.hour > self.BED_TIME and not self.action_in_plan(Action.SLEEP):
+            self.SLEEP = True
+        else:
+            self.SLEEP = False
+
         if self.liquid_waste > self.LIQUID_RELEASE and not self.action_in_plan(Action.WC_PEE):
+            # self.plan.insert(0, Actions.actions[Action_Physiologic.WC_PEE])
             self.plan.insert(0, Actions.actions[Action.WC_PEE])
             self.URINE = True
         else:
             self.URINE = False
         if self.solid_waste > self.SOLID_RELEASE and not self.action_in_plan(Action.WC_POO):
+            # self.plan.insert(0, Actions.actions[Action_Physiologic.WC_POO])
             self.plan.insert(0, Actions.actions[Action.WC_POO])
             self.CONGESTED = True
         else:
             self.CONGESTED = False
 
-        if self.performance.cognitive_short < 10:
+        if self.performance.cognitive_short < self.COGNITIVE_FATIGUE_LEVEL:
             self.COGNITIVE_FATIGUE = True
-        elif self.performance.cognitive_short > 30:
+        elif self.performance.cognitive_short > self.COGNITIVE_NORMAL_LEVEL:
             self.COGNITIVE_FATIGUE = False
+
+        if self.performance.motor_short < self.MOTOR_FATIGUE_LEVEL:
+            self.MOTOR_FATIGUE = True
+        elif self.performance.motor_short > self.MOTOR_NORMAL_LEVEL:
+            self.MOTOR_FATIGUE = False
 
         if self.liquid_absorbed > self.THIRSTY_LEVEL:
             self.THIRSTY = False
         else:
             self.THIRSTY = True
         # if self.solid_absorbed > self.HUNGRY_LEVEL:
-        if (self.performance.motor_short + self.performance.cognitive_short < 50):
+        # if (self.performance.motor_short + self.performance.cognitive_short < 50):
+        if (self.energy.motor_short + self.energy.motor_long + self.energy.cognitive_short + self.energy.cognitive_long + self.energy.cardio + self.energy.regulatory) < 10:
             self.HUNGRY = True
         else:
             self.HUNGRY = False
@@ -133,10 +173,18 @@ class Human:
 
         # Physiological needs are the priority so they go in the end in the code
         if self.THIRSTY and not self.action_in_plan(Action.DRINK) and not self.current_action.name == Action.DRINK:
+            # self.plan.insert(0, Action_Physiologic(Action_Physiologic.DRINK))
             self.plan.insert(0, Actions.actions[Action.DRINK])
-        if self.HUNGRY and not self.action_in_plan(Action.EAT) and not self.current_action.name == Action.EAT:
-            self.plan.insert(0, Actions.actions[Action.EAT])
 
+        if self.HUNGRY and not self.action_in_plan(Action.EAT) and not self.current_action.name == Action.EAT:
+            if (self.schedule_lunch[0] <= self.simul_time.hour <= self.schedule_lunch[1]) \
+                    or (self.schedule_dinner[0] <= self.simul_time.hour <= self.schedule_dinner[1]):
+                self.plan.insert(0, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=250))
+            else:
+                self.plan.insert(0, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
+
+        if self.SLEEP and not self.action_in_plan(Action.SLEEP) and not self.current_action.name == Action.SLEEP:
+            self.plan.insert(0, Actions.actions[Action.SLEEP])
 
 
     # From eating to body
@@ -161,68 +209,84 @@ class Human:
         if self.energy.motor_short > 0:
             self.energy.motor_short = self.energy.motor_short - self.ABSORPTION_RATE_ENERGY
             if self.performance.motor_short < 0:
-                self.weight = self.weight - self.ABSORPTION_RATE_ENERGY
+                self.weight = self.weight - (self.ABSORPTION_RATE_ENERGY * 0.01)
             if self.performance.motor_short < 100:
                 self.performance.motor_short = self.performance.motor_short + self.ABSORPTION_RATE_ENERGY
             else:
-                self.weight = self.weight + self.ABSORPTION_RATE_ENERGY
+                self.weight = self.weight + (self.ABSORPTION_RATE_ENERGY * 0.01)
+
+        # if self.energy.motor_long > 0:
+        #     self.energy.motor_long = self.energy.motor_long - self.ABSORPTION_RATE_ENERGY
+        #     if self.performance.motor_long < 0:
+        #         self.weight = self.weight - (self.ABSORPTION_RATE_ENERGY  * 0.1)
+        #     elif self.performance.motor_long < 100:
+        #         self.performance.motor_long = self.performance.motor_long + self.ABSORPTION_RATE_ENERGY
+        #     else:
+        #         self.weight = self.weight + (self.ABSORPTION_RATE_ENERGY * 0.1)
 
         if self.energy.motor_long > 0:
             self.energy.motor_long = self.energy.motor_long - self.ABSORPTION_RATE_ENERGY
-            if self.performance.motor_long < 0:
-                self.weight = self.weight - self.ABSORPTION_RATE_ENERGY
-            elif self.performance.motor_long < 100:
-                self.performance.motor_long = self.performance.motor_long + self.ABSORPTION_RATE_ENERGY
-            else:
-                self.weight = self.weight + self.ABSORPTION_RATE_ENERGY
-
+            self.performance.motor_long = self.performance.motor_long + self.ABSORPTION_RATE_ENERGY
+            
         if self.energy.cognitive_short > 0:
             self.energy.cognitive_short = self.energy.cognitive_short - self.ABSORPTION_RATE_ENERGY
             if self.performance.cognitive_short < 0:
-                self.weight = self.weight - self.ABSORPTION_RATE_ENERGY
+                self.weight = self.weight - (self.ABSORPTION_RATE_ENERGY * 0.01)
             elif self.performance.cognitive_short < 100:
                 self.performance.cognitive_short = self.performance.cognitive_short + self.ABSORPTION_RATE_ENERGY
             else:
-                self.weight = self.weight + self.ABSORPTION_RATE_ENERGY
+                self.weight = self.weight + (self.ABSORPTION_RATE_ENERGY * 0.01)
+
+        # if self.energy.cognitive_long > 0:
+        #     self.energy.cognitive_long = self.energy.cognitive_long - self.ABSORPTION_RATE_ENERGY
+        #     if self.performance.cognitive_long < 0:
+        #         self.weight = self.weight - (self.ABSORPTION_RATE_ENERGY * 0.1)
+        #     elif self.performance.cognitive_long < 100:
+        #         self.performance.cognitive_long = self.performance.cognitive_long + self.ABSORPTION_RATE_ENERGY
+        #     else:
+        #         self.weight = self.weight + (self.ABSORPTION_RATE_ENERGY * 0.1)
 
         if self.energy.cognitive_long > 0:
             self.energy.cognitive_long = self.energy.cognitive_long - self.ABSORPTION_RATE_ENERGY
-            if self.performance.cognitive_long < 0:
-                self.weight = self.weight - self.ABSORPTION_RATE_ENERGY
-            elif self.performance.cognitive_long < 100:
-                self.performance.cognitive_long = self.performance.cognitive_long + self.ABSORPTION_RATE_ENERGY
-            else:
-                self.weight = self.weight + self.ABSORPTION_RATE_ENERGY
+            self.performance.cognitive_long = self.performance.cognitive_long + self.ABSORPTION_RATE_ENERGY
+
+        # if self.energy.cardio > 0:
+        #     self.energy.cardio = self.energy.cardio - self.ABSORPTION_RATE_ENERGY
+        #     if self.performance.cardio < 0:
+        #         self.weight = self.weight - (self.ABSORPTION_RATE_ENERGY * 0.1)
+        #     elif self.performance.cardio < 100:
+        #         self.performance.cardio = self.performance.cardio + self.ABSORPTION_RATE_ENERGY
+        #     else:
+        #         self.weight = self.weight + (self.ABSORPTION_RATE_ENERGY * 0.1)
 
         if self.energy.cardio > 0:
             self.energy.cardio = self.energy.cardio - self.ABSORPTION_RATE_ENERGY
-            if self.performance.cardio < 0:
-                self.weight = self.weight - self.ABSORPTION_RATE_ENERGY
-            elif self.performance.cardio < 100:
-                self.performance.cardio = self.performance.cardio + self.ABSORPTION_RATE_ENERGY
-            else:
-                self.weight = self.weight + self.ABSORPTION_RATE_ENERGY
+            self.performance.cardio = self.performance.cardio + self.ABSORPTION_RATE_ENERGY
 
+        # if self.energy.regulatory > 0:
+        #     self.energy.regulatory = self.energy.regulatory - self.ABSORPTION_RATE_ENERGY
+        #     if self.performance.regulatory < 0:
+        #         self.weight = self.weight - (self.ABSORPTION_RATE_ENERGY * 0.1)
+        #     elif self.performance.regulatory < 100:
+        #         self.performance.regulatory = self.performance.regulatory + self.ABSORPTION_RATE_ENERGY
+        #     else:
+        #         self.weight = self.weight + (self.ABSORPTION_RATE_ENERGY * 0.1)
         if self.energy.regulatory > 0:
             self.energy.regulatory = self.energy.regulatory - self.ABSORPTION_RATE_ENERGY
-            if self.performance.regulatory < 0:
-                self.weight = self.weight - self.ABSORPTION_RATE_ENERGY
-            elif self.performance.regulatory < 100:
-                self.performance.regulatory = self.performance.regulatory + self.ABSORPTION_RATE_ENERGY
-            else:
-                self.weight = self.weight + self.ABSORPTION_RATE_ENERGY
+            self.performance.regulatory = self.performance.regulatory + self.ABSORPTION_RATE_ENERGY
 
         return None
 
     # when eating
     def update_energy(self, act):
+        reduction_factor = 0.2
         for f in act.foods:
-            self.liquid_absorbed = self.liquid_absorbed + ((f.get_water()/act.steps) / len(act.foods))
-            self.solid_absorbed = self.solid_absorbed + ((f.get_solid()/act.steps) / len(act.foods))
+            self.liquid_absorbed = self.liquid_absorbed + (((f.get_water()/act.steps) / len(act.foods)) * reduction_factor)
+            self.solid_absorbed = self.solid_absorbed + (((f.get_solid()/act.steps) / len(act.foods)) * reduction_factor)
 
         for f in act.drinks:
-            self.liquid_absorbed = self.liquid_absorbed + (f.get_water() / act.steps)
-            self.solid_absorbed = self.solid_absorbed + (f.get_solid() / act.steps)
+            self.liquid_absorbed = self.liquid_absorbed + ((f.get_water() / act.steps) * reduction_factor)
+            self.solid_absorbed = self.solid_absorbed + ((f.get_solid() / act.steps) * reduction_factor)
 
         self.energy.motor_short = self.energy.motor_short + (act.impact.motor_short/act.steps)
         self.energy.motor_long = self.energy.motor_long + (act.impact.motor_long/act.steps)
@@ -272,8 +336,8 @@ class Human:
     def get_status(self):
         temp_status = []
 
-        if self.FATIGUE: temp_status.append("Fatigue")
-        if self.STRESS: temp_status.append("Stress")
+        if self.COGNITIVE_FATIGUE: temp_status.append("Cognitive Fatigue")
+        if self.MOTOR_FATIGUE: temp_status.append("Motor Fatigue")
         if self.HUNGRY: temp_status.append("Hungry")
         if self.THIRSTY: temp_status.append("Thirsty")
         if self.URINE: temp_status.append("Need to Urinate!")
@@ -316,7 +380,7 @@ class Human:
         print("Height:", self.height)
         print("BMI:", self.print_bmi())
         print("Status: ", self.get_status())
-        print("Fatigue: " , self.fatigue_level)
+        print("Fatigue: " , self.fatigue)
 
         # Physiology
         print("Liquid Absorbed: ", self.liquid_absorbed , "| Liquid Waste: ", self.liquid_waste)
@@ -335,7 +399,7 @@ class Human:
         # Planning
         print("Plan:")
         for p in self.plan:
-            if p.name == Action.EAT:
+            if p.name == Action_Physiologic.EAT:
                 f_names = [f.name for f in p.foods]
                 print("\t", p.name, ":", p.steps, "mins - ", f_names)
             else:
@@ -353,12 +417,9 @@ class Humans:
     humans = []
 
     # TODO - load all humans in csv file
-    def __init__(self):
+    def __init__(self, time_simulation):
 
-        self.humans.append(Human("Joao", 32, weight=85, height=1.89))
-        # self.humans.append(Human("Sandra", 35))
-        # self.humans.append(Human("Rui", 30))
-        # self.humans.append(Human("Ste", 28))
+        self.humans.append(Human(simul_time=time_simulation, name="Joao", age=32, weight=85, height=1.89))
 
     def get_humans(self):
         return self.humans

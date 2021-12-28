@@ -18,13 +18,15 @@ class Action:
     WC_PEE = "WC_PEE"
     WC_POO = "WC_POO"
 
-    def __init__(self, name, steps, impact=Properties()):
+    def __init__(self, name, steps, impact=Properties(), size=500):
 
         # Eat specific
         self.N_FOOD = 5
         self.foods = []
         self.drinks = []
         self.impact = impact
+        self.size = size
+        self.baseline_size = 100
         self.name = name
         self.steps = steps
         self.cognitive_demanding = False
@@ -48,15 +50,17 @@ class Action:
 
     def choose_food_update_impact(self):
 
+        ratio = (self.size / self.N_FOOD) / self.baseline_size
+
         self.foods = [Foods.foods[i] for i in random.sample(range(0, len(Foods.foods)), self.N_FOOD)]
 
         for f in self.foods:
-            self.impact.motor_short = self.impact.motor_short + f.weights.motor_short
-            self.impact.motor_long = self.impact.motor_long + f.weights.motor_long
-            self.impact.cognitive_short = self.impact.cognitive_short + f.weights.cognitive_short
-            self.impact.cognitive_long = self.impact.cognitive_long + f.weights.cognitive_long
-            self.impact.cardio = self.impact.cardio + f.weights.cardio
-            self.impact.regulatory = self.impact.regulatory + f.weights.regulatory
+            self.impact.motor_short = self.impact.motor_short + (f.weights.motor_short * ratio)
+            self.impact.motor_long = self.impact.motor_long + (f.weights.motor_long * ratio)
+            self.impact.cognitive_short = self.impact.cognitive_short + (f.weights.cognitive_short * ratio)
+            self.impact.cognitive_long = self.impact.cognitive_long + (f.weights.cognitive_long * ratio)
+            self.impact.cardio = self.impact.cardio + (f.weights.cardio * ratio)
+            self.impact.regulatory = self.impact.regulatory + (f.weights.regulatory * ratio)
 
     def choose_drink_update_impact(self):
 
@@ -82,9 +86,10 @@ class Actions:
         self.actions[Action.RUN] = Action(Action.RUN, 5, impact=Properties(-1, 0.3, 1, 0.3, 0.05, 0.05))
         self.actions[Action.WALK] = Action(Action.WALK, 5, impact=Properties(-0.3, 0.1, 0.3, 0.1, 0.02, 0.02))
         self.actions[Action.SIT_WORK] = Action(Action.SIT_WORK, 5, impact=Properties(0, -0.1, -0.3, 0.1, -0.01, -0.01))
-        self.actions[Action.READ] = Action(Action.READ, 30, impact=Properties(-0.5, -0.1, -2.5, 0.5, -0.01, -0.01))
-        self.actions[Action.WATCH_TV] = Action(Action.WATCH_TV, 30, impact=Properties(0.5, -0.1, 0.5, -0.1, -0.05, -0.05))
-        self.actions[Action.SLEEP] = Action(Action.SLEEP, 60, impact=Properties(-0.05, 0.1, 0.2, 0.1, 0.05, 0.05))
+
+        self.actions[Action.READ] = Action(Action.READ, 30, impact=Properties(0.2, -0.05, -2.5, 0.05, -0.01, -0.01))
+        self.actions[Action.WATCH_TV] = Action(Action.WATCH_TV, 30, impact=Properties(0.2, -0.1, 0.5, -0.1, -0.05, -0.05))
+        self.actions[Action.SLEEP] = Action(Action.SLEEP, 60 * 8, impact=Properties(5, 0.5, 5, 0.5, 0.05, 0.05))
 
         # Physiology regulation
         self.actions[Action.EAT] = Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0))
