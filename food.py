@@ -37,9 +37,9 @@ class Food:
     def get_weights(self):
 
         temp_motor_short = (self.nutrition.carbs / 2.5) + (self.nutrition.sugar / 2.5)
-        temp_motor_long = self.nutrition.protein / 2.5
+        temp_motor_long = self.nutrition.protein / 100
         temp_cognitive_short = (self.nutrition.carbs / 2.5) + (self.nutrition.sugar / 2.5)
-        temp_cognitive_long = (self.nutrition.poli_fat / 2.5) + (self.nutrition.vitamins / 2.5)
+        temp_cognitive_long = (self.nutrition.poli_fat / 100) + (self.nutrition.vitamins / 100)
 
         temp_cardio = (self.nutrition.vitamins / 2.5) + (self.nutrition.poli_fat / 2.5)
         temp_regulatory = (self.nutrition.vitamins / 2.5)

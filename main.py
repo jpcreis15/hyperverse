@@ -4,8 +4,8 @@ from action import *
 import os, shutil
 from simulation_time import Time
 
-def remove_all_files(folder):
 
+def remove_all_files(folder):
     for filename in os.listdir(folder):
         file_path = os.path.join(folder, filename)
         try:
@@ -16,27 +16,28 @@ def remove_all_files(folder):
         except Exception as e:
             print('Failed to delete %s. Reason: %s' % (file_path, e))
 
-
 time_simulation = Time()
 foods = Foods().get_foods()         # List
 humans = Humans(time_simulation).get_humans()      # List
 actions = Actions().get_actions()   # Dict
 
-# actions[Action.RUN].print()
-# humans[0].print()
-# foods[2].print()
-
-SIMULATION_MAX = 12000
+SIMULATION_MAX = 15000
 STEP = 1
 
 humans[0].add_action(Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
-# humans[0].add_action(Action_Physiologic(Action_Physiologic.EAT))
-# humans[0].add_action(Actions.actions[Action.SLEEP])
-# humans[0].add_action(Actions.actions[Action.WC])
-for i in np.arange(3):
-    humans[0].add_action(Actions.actions[Action.WATCH_TV])
+
+# for i in np.arange(3):
+#     humans[0].add_action(Actions.actions[Action.WATCH_TV])
+# for i in np.arange(150):
+#     humans[0].add_action(Actions.actions[Action.READ])
+# humans[0].add_action(Action(Action.RUN, steps=60, impact=Properties(-2.5, 0.005, 0.2, 0.005,  0.01, 0.01)))
+
+# for i in np.arange(100):
+#     humans[0].add_action(Action(Action.RUN, steps=60, impact=Properties(-10, 0.005, 0.2, 0.005,  0.01, 0.01)))
+
 for i in np.arange(100):
     humans[0].add_action(Actions.actions[Action.READ])
+
 
 #######################################################################################
 
