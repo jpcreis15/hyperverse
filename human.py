@@ -18,6 +18,11 @@ class Human:
               "energy.motor_long", "energy.cognitive_short", "energy.cognitive_long",
               "energy.cardio", "energy.regulatory", "fatigue_level"]
 
+    header_light = ["time", "weight", "current_action.name", "current_action.steps", "performance.motor_short",
+              "performance.motor_long", "performance.cognitive_short", "performance.cognitive_long",
+              "performance.cardio", "performance.regulatory", "energy.motor_short",
+              "energy.motor_long", "energy.cognitive_short", "energy.cognitive_long"]
+
     # Healthy issues
     COGNITIVE_FATIGUE = False
     MOTOR_FATIGUE = False
@@ -382,8 +387,8 @@ class Human:
         if os.stat(file).st_size == 0:
             writer.writerow(self.header)
 
-        temp_plan = [p.name for p in self.plan]
-        temp_plan_physio = [p.name for p in self.plan_physio]
+        temp_plan = [p.name for p in self.plan[0:10]]
+        temp_plan_physio = [p.name for p in self.plan_physio[0:10]]
 
         row_tuple = [time_str, round(self.weight, 2), round(self.height,2), round(self.bmi,2), round(self.liquid_absorbed,2), round(self.liquid_waste,2), round(self.solid_absorbed,2),
                  round(self.solid_waste,2), temp_plan_physio, temp_plan, self.current_action.name, self.current_action.steps, round(self.performance.motor_short,2),
@@ -391,6 +396,26 @@ class Human:
                  round(self.performance.cardio,2), round(self.performance.regulatory,2), round(self.energy.motor_short,2),
                  round(self.energy.motor_long,2), round(self.energy.cognitive_short,2), round(self.energy.cognitive_long,2),
                  round(self.energy.cardio,2), round(self.energy.regulatory,2), self.fatigue]
+
+        writer.writerow(row_tuple)
+        f.close()
+
+    def write_csv_light(self, folder, time_str):
+
+        file = "{}{}_light.csv".format(folder, self.name)
+
+        # open the file in the write mode
+        f = open(file, 'a+')
+        writer = csv.writer(f, delimiter=",", lineterminator='\n')
+
+        # if file exists and is empty, remove existing and add header
+        if os.stat(file).st_size == 0:
+            writer.writerow(self.header_light)
+
+        row_tuple = [time_str, round(self.weight, 2), self.current_action.name, self.current_action.steps, round(self.performance.motor_short,2),
+                 round(self.performance.motor_long,2), round(self.performance.cognitive_short,2), round(self.performance.cognitive_long,2),
+                 round(self.performance.cardio,2), round(self.performance.regulatory,2), round(self.energy.motor_short,2),
+                 round(self.energy.motor_long,2), round(self.energy.cognitive_short,2), round(self.energy.cognitive_long,2)]
 
         writer.writerow(row_tuple)
         f.close()

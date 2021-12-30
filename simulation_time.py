@@ -37,3 +37,4 @@ class Time:
                 self.day = 1
                 if self.month > self.max_month:
                     self.year = self.year + 1
+                    self.month = 1
