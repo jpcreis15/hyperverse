@@ -16,12 +16,12 @@ class Human:
               "performance.motor_long", "performance.cognitive_short", "performance.cognitive_long",
               "performance.cardio", "performance.regulatory", "energy.motor_short",
               "energy.motor_long", "energy.cognitive_short", "energy.cognitive_long",
-              "energy.cardio", "energy.regulatory", "fatigue_level"]
+              "energy.cardio", "energy.regulatory", "fatigue_level", "MOTOR_FATIGUE", "COGNITIVE_FATIGUE"]
 
-    header_light = ["time", "weight", "current_action.name", "current_action.steps", "performance.motor_short",
+    header_light = ["time", "weight", "plan_physio", "current_action.name", "current_action.steps", "performance.motor_short",
               "performance.motor_long", "performance.cognitive_short", "performance.cognitive_long",
               "performance.cardio", "performance.regulatory", "energy.motor_short",
-              "energy.motor_long", "energy.cognitive_short", "energy.cognitive_long"]
+              "energy.motor_long", "energy.cognitive_short", "energy.cognitive_long", "fatigue", "MOTOR_FATIGUE", "COGNITIVE_FATIGUE"]
 
     # Healthy issues
     COGNITIVE_FATIGUE = False
@@ -61,14 +61,14 @@ class Human:
     MOTOR_FATIGUE_LEVEL = 10        # threshold for tiredness - might result in resting actions
     MOTOR_NORMAL_LEVEL = 30         # threshold for tiredness - might result in resting actions
 
-    first_meal = False
     schedule_lunch = [12, 14]
     schedule_dinner = [19, 21]
-    BED_TIME = 22
-    BED_TIME_LIMIT = 2
+    BED_TIME = [22, 2]
+
     # Planning
     plan = []
     plan_physio = []
+    SHORT_TERM_PLAN = 2
 
     # TODO - DNA for later influence in major human characteristics
     def __init__(self, simul_time, name="Neo", age=20, weight=70, height=1.7, performance=Properties(50, 50, 50, 50, 50, 50), energy=Properties(0, 0, 0, 0, 0, 0)):
@@ -135,17 +135,18 @@ class Human:
     # regulation of the plan
     def regulation(self):
 
+        ################################################################
+        # Arquetypes of the system. Learning should bot be made here
         # Normal body resources consumption
         if self.current_action.name == Action.SLEEP:
             self.fatigue = 1
-            self.first_meal = True
         else:
             factor = self.BODY_REGULATION_RATE / self.fatigue
             self.performance.motor_short = self.performance.motor_short - factor
             self.performance.cognitive_short = self.performance.cognitive_short - factor
 
         # Levels
-        if (self.fatigue < 0.3 and self.simul_time.hour > self.BED_TIME) or (self.fatigue < 0.3 and self.simul_time.hour < self.BED_TIME_LIMIT) and not self.action_in_plan(Action.SLEEP, self.plan_physio):
+        if (self.fatigue < 0.3 and self.simul_time.hour >= self.BED_TIME[0]) or (self.fatigue < 0.3 and self.simul_time.hour <= self.BED_TIME[1]) and not self.action_in_plan(Action.SLEEP, self.plan_physio):
             self.SLEEP = True
         else:
             self.SLEEP = False
@@ -185,26 +186,43 @@ class Human:
             self.HUNGRY = False
 
         #############################################################################
+        # Location to implement learning
         # Actions
+        temp_len = self.SHORT_TERM_PLAN
+        if len(self.plan) < self.SHORT_TERM_PLAN: temp_len = len(self.plan)
         if self.COGNITIVE_FATIGUE:
-            if not (False in [self.plan[i].cognitive_demanding for i in np.arange(len(self.plan))]):
+            # if not (False in [self.plan[i].cognitive_demanding for i in np.arange(len(self.plan[0:temp_len]))]) and self.current_action.cognitive_demanding:
+            if self.current_action.cognitive_demanding:
                 self.plan.insert(0, Actions.actions[Action.WATCH_TV])
+                self.current_action.steps = 2   # Needs to be 2 because right after regulation steps are decreased
         if self.MOTOR_FATIGUE:
-            if not (False in [self.plan[i].motor_demanding for i in np.arange(len(self.plan))]):
+            # if not (False in [self.plan[i].motor_demanding for i in np.arange(len(self.plan[0:temp_len]))]) and self.current_action.motor_demanding:
+            if self.current_action.motor_demanding:
                 self.plan.insert(0, Actions.actions[Action.WATCH_TV])
+                self.current_action.steps = 2  # Needs to be 2 because right after regulation steps are decreased
 
 
         # Physiological needs are the priority so they go in the end in the code
         if self.THIRSTY and not self.action_in_plan(Action.DRINK, self.plan_physio) and not self.current_action.name == Action.DRINK:
-            # self.plan.insert(0, Action_Physiologic(Action_Physiologic.DRINK))
-            self.plan_physio.insert(0, Actions.actions[Action.DRINK])
+            # Give priority to sleep
+            # TODO change this for a insert_physio function to avoid changing in all list inserts
+            if Action.SLEEP in self.plan_physio:
+                self.plan_physio.insert(1, Actions.actions[Action.DRINK])
+            else:
+                self.plan_physio.insert(0, Actions.actions[Action.DRINK])
 
         if self.HUNGRY and not self.action_in_plan(Action.EAT, self.plan_physio) and not self.current_action.name == Action.EAT:
             if (self.schedule_lunch[0] <= self.simul_time.hour <= self.schedule_lunch[1]) \
                     or (self.schedule_dinner[0] <= self.simul_time.hour <= self.schedule_dinner[1]):
-                self.plan_physio.insert(0, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=250))
+                if Action.SLEEP in self.plan_physio:
+                    self.plan_physio.insert(1, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=250))
+                else:
+                    self.plan_physio.insert(0, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=250))
             else:
-                self.plan_physio.insert(0, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
+                if Action.SLEEP in self.plan_physio:
+                    self.plan_physio.insert(1, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
+                else:
+                    self.plan_physio.insert(0, Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
 
         if self.SLEEP and not self.action_in_plan(Action.SLEEP, self.plan_physio) and not self.current_action.name == Action.SLEEP:
             self.plan_physio.insert(0, Actions.actions[Action.SLEEP])
@@ -348,9 +366,6 @@ class Human:
         del plan[0]
         return res
 
-    def add_physiological(self, action):
-        self.plan.insert(0, action)
-
     def print_bmi(self):
         if self.bmi < 18.5: return "Underweight"
         elif self.bmi < 24.9: return "Normal weight"
@@ -395,7 +410,7 @@ class Human:
                  round(self.performance.motor_long,2), round(self.performance.cognitive_short,2), round(self.performance.cognitive_long,2),
                  round(self.performance.cardio,2), round(self.performance.regulatory,2), round(self.energy.motor_short,2),
                  round(self.energy.motor_long,2), round(self.energy.cognitive_short,2), round(self.energy.cognitive_long,2),
-                 round(self.energy.cardio,2), round(self.energy.regulatory,2), self.fatigue]
+                 round(self.energy.cardio,2), round(self.energy.regulatory,2), self.fatigue, self.MOTOR_FATIGUE, self.COGNITIVE_FATIGUE]
 
         writer.writerow(row_tuple)
         f.close()
@@ -412,16 +427,17 @@ class Human:
         if os.stat(file).st_size == 0:
             writer.writerow(self.header_light)
 
-        row_tuple = [time_str, round(self.weight, 2), self.current_action.name, self.current_action.steps, round(self.performance.motor_short,2),
+        row_tuple = [time_str, round(self.weight, 2), [p.name for p in self.plan_physio[0:10]], self.current_action.name, self.current_action.steps, round(self.performance.motor_short,2),
                  round(self.performance.motor_long,2), round(self.performance.cognitive_short,2), round(self.performance.cognitive_long,2),
                  round(self.performance.cardio,2), round(self.performance.regulatory,2), round(self.energy.motor_short,2),
-                 round(self.energy.motor_long,2), round(self.energy.cognitive_short,2), round(self.energy.cognitive_long,2)]
+                 round(self.energy.motor_long,2), round(self.energy.cognitive_short,2), round(self.energy.cognitive_long,2), self.fatigue, self.MOTOR_FATIGUE, self.COGNITIVE_FATIGUE]
 
         writer.writerow(row_tuple)
         f.close()
 
     def print(self):
         # Identity
+        print("Time: ", self.simul_time.str())
         print("Name: ", self.name)
         print("Age: ", self.age)
         print("Weight:", self.weight)
@@ -446,8 +462,8 @@ class Human:
 
         # Planning
         print("Plan:")
-        for p in self.plan:
-            if p.name == Action_Physiologic.EAT:
+        for p in self.plan[0:10]:
+            if p.name == Action.EAT:
                 f_names = [f.name for f in p.foods]
                 print("\t", p.name, ":", p.steps, "mins - ", f_names)
             else:

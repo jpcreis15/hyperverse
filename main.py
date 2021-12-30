@@ -22,7 +22,7 @@ foods = Foods().get_foods()         # List
 humans = Humans(time_simulation).get_humans()      # List
 actions = Actions().get_actions()   # Dict
 
-SIMULATION_MAX = 100000
+SIMULATION_MAX = 1000000
 STEP = 1
 
 humans[0].add_action(Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0), size=100))
@@ -33,14 +33,11 @@ humans[0].add_action(Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0),
 #     humans[0].add_action(Actions.actions[Action.READ])
 # humans[0].add_action(Action(Action.RUN, steps=60, impact=Properties(-2.5, 0.005, 0.2, 0.005,  0.01, 0.01)))
 
-for i in np.arange(600):
-    humans[0].add_action(Action(Action.RUN, steps=60, impact=Properties(-10, 0.005, 0.2, 0.005,  0.01, 0.01)))
+for i in np.arange(2000):
+    humans[0].add_action(Action(Action.RUN, steps=60, impact=Properties(-10, 0.03, 0.2, 0.005,  0.01, 0.01)))
 
     for j in np.arange(8):
         humans[0].add_action(Actions.actions[Action.READ])
-
-    for j in np.arange(8):
-        humans[0].add_action(Actions.actions[Action.WATCH_TV])
 
 
 #######################################################################################
@@ -55,6 +52,7 @@ val = SIMULATION_MAX/point
 start = time.time()
 for tick in np.arange(SIMULATION_MAX):
 
+    # Progress bar
     if (tick % val) == 0:
         num = (tick / val)
         print("[", '='*int(num), " "*(int(point - num) - 1), "] ", round((tick/SIMULATION_MAX)*100,2) , "%")
@@ -67,6 +65,7 @@ for tick in np.arange(SIMULATION_MAX):
     humans[0].do_step()
     if _print: humans[0].print()
     #humans[0].write_csv_light(folder, time_simulation.str())
+    # humans[0].write_csv(folder, time_simulation.str())
 
     if _print: print('=~'*20)
     if _print: input()
@@ -76,3 +75,5 @@ seconds = end - start
 minutes = seconds/60
 hours = minutes/60
 print("Simulation time (hours): {}h {}min {}sec".format(int(hours), int(minutes), int(seconds)-(int(minutes)*60)))
+for h in humans:
+    h.print()

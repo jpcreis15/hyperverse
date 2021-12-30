@@ -89,7 +89,7 @@ class Actions:
         self.actions[Action.READ] = Action(Action.READ, 30,         impact=Properties(0.2, -0.008, -2.5, 0.005, -0.008, -0.008))
         self.actions[Action.WATCH_TV] = Action(Action.WATCH_TV, 30, impact=Properties(0.2, -0.008, 0.5, -0.005, -0.008, -0.008))
         self.actions[Action.SLEEP] = Action(Action.SLEEP, 60 * 8,   impact=Properties(3,   -0.008, 3,   0.005,  -0.008, -0.005))
-        self.actions[Action.RUN] = Action(Action.RUN, 10,           impact=Properties(-4, 0.01, 0.2, 0.005,  0.01, 0.02))
+        self.actions[Action.RUN] = Action(Action.RUN, 10,           impact=Properties(-10, 0.005, 0.2, 0.005,  0.01, 0.01))
 
         # Physiology regulation
         self.actions[Action.EAT] = Action(Action.EAT, 30, impact=Properties(0, 0, 0, 0, 0, 0))
